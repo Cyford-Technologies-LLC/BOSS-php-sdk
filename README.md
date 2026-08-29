@@ -7,8 +7,13 @@ WordPress plugin once it's generalized. Companion to the
 
 ## Install
 
-Add this repo as a VCS source and require it — no private Packagist/Satis
-server needed, this is a public repo so `composer install` just works:
+**This repo is private** — deliberately, unlike the JS SDK (client-side JS
+has no secrecy benefit to gating; this SDK's source shows the HMAC signing
+scheme and internal error contract, which is worth keeping access-
+controlled). No private Packagist/Satis server needed either way — add this
+repo as a VCS source and require it, same as if it were public, but the
+consuming company needs a GitHub credential with read access to this one
+repo first:
 
 ```json
 {
@@ -28,6 +33,25 @@ composer require zeroai/boss-php-sdk
 Composer resolves `^0.1` against this repo's git tags. A new tagged release
 here is picked up by any consumer's next `composer update` — nothing to
 re-copy or re-integrate.
+
+### Granting a company access
+
+Two ways to give a consuming company's build read access to this private
+repo, without making the repo public or standing up a registry:
+
+1. **Deploy key (recommended per company)** — the company generates an SSH
+   keypair on their own build server, sends you the *public* key, you add
+   it under this repo's Settings → Deploy Keys (read-only). They then use
+   the `git@github.com:...` SSH form of the URL above. Cleanly revocable
+   per company; the private key never leaves their infrastructure.
+2. **Fine-grained GitHub PAT scoped to just this repo** — simpler to hand
+   out, but it's a bearer secret you're transmitting, so treat it like one
+   (rotate it, don't email it in plaintext). The company adds it via
+   `composer config --global github-oauth.github.com <token>` or their
+   project's `auth.json`, and uses the HTTPS URL as-is.
+
+Either way, this is a one-time manual step per company (a GitHub setting,
+not application code) — it isn't automated by anything in this repo.
 
 ## Status (2026-08-29)
 
@@ -137,10 +161,11 @@ hitting real BOSS infrastructure.
 ## Distribution
 
 This repo *is* the distribution mechanism (git VCS + tags), not a
-placeholder for one — see Install above. It's public: client-side
-JS has no secrecy benefit to gating (per the JS SDK's own reasoning), but
-this SDK talks to internal-shaped auth/error contracts server-side, so
-revisit this if that tradeoff turns out to matter.
+placeholder for one — see Install above. It's private, unlike the JS SDK
+(which has no secrecy benefit to gating since it's readable in any
+browser) — this SDK's source shows the HMAC signing scheme and internal
+error contract, so access is controlled per company via a deploy key or
+scoped PAT (see "Granting a company access" above).
 
 ## Versioning / compatibility
 
