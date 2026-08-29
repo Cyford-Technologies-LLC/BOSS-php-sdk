@@ -62,6 +62,8 @@ $boss = new Client([
 ]);
 $result = $boss->leads()->create(['name' => 'Jane']);
 check('Leads::create() unwraps data', ($result['lead']['id'] ?? null) === 42);
+check('X-Client-Name header identifies this SDK', ($mock->requests[0]['headers']['X-Client-Name'] ?? null) === 'boss-php-sdk');
+check('X-Client-Version header matches Client::VERSION', ($mock->requests[0]['headers']['X-Client-Version'] ?? null) === \ZeroAI\Boss\Sdk\Client::VERSION);
 check('Request went to POST /crm/leads', $mock->requests[0]['method'] === 'POST' && str_ends_with($mock->requests[0]['url'], '/crm/leads'));
 check('Signed-client headers present', isset($mock->requests[0]['headers']['X-ZeroAI-Signature'], $mock->requests[0]['headers']['X-ZeroAI-Client']));
 check('Idempotency-Key auto-generated on write', isset($mock->requests[0]['headers']['Idempotency-Key']) && $mock->requests[0]['headers']['Idempotency-Key'] !== '');

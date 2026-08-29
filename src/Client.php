@@ -31,6 +31,9 @@ use ZeroAI\Boss\Sdk\Resources\Visitors;
  */
 final class Client
 {
+    /** Bump alongside the git tag/CHANGELOG entry on every release - sent as X-Client-Version on every request so BOSS can see which SDK version is actually in use (BOSS project 43 feature #113). */
+    public const VERSION = '0.1.0';
+
     private Config $config;
 
     private Leads $leads;
@@ -111,7 +114,12 @@ final class Client
         $url = $this->config->baseUrl . $path . ($query !== [] ? '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986) : '');
         $rawBody = $body !== [] || $isWrite ? (string)json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : '';
 
-        $headers = ['Content-Type' => 'application/json', 'Accept' => 'application/json'];
+        $headers = [
+            'Content-Type' => 'application/json',
+            'Accept' => 'application/json',
+            'X-Client-Name' => 'boss-php-sdk',
+            'X-Client-Version' => self::VERSION,
+        ];
 
         if ($this->config->bearerToken !== null) {
             $headers += RequestSigner::bearerHeaders($this->config->bearerToken);
