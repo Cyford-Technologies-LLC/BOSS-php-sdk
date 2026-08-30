@@ -32,7 +32,7 @@ use ZeroAI\Boss\Sdk\Resources\Visitors;
 final class Client
 {
     /** Bump alongside the git tag/CHANGELOG entry on every release - sent as X-Client-Version on every request so BOSS can see which SDK version is actually in use (BOSS project 43 feature #113). */
-    public const VERSION = '0.1.0';
+    public const VERSION = '0.1.1';
 
     private Config $config;
 
