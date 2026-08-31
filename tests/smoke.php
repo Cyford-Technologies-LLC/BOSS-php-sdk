@@ -21,6 +21,7 @@ require __DIR__ . '/../src/Http/MockHttpClient.php';
 require __DIR__ . '/../src/Auth/RequestSigner.php';
 require __DIR__ . '/../src/Config.php';
 require __DIR__ . '/../src/ResourceRecord.php';
+require __DIR__ . '/../src/SystemMetricsCollector.php';
 require __DIR__ . '/../src/Resources/AbstractResource.php';
 require __DIR__ . '/../src/Resources/CreatesRecords.php';
 require __DIR__ . '/../src/Resources/Leads.php';
@@ -28,6 +29,7 @@ require __DIR__ . '/../src/Resources/Customers.php';
 require __DIR__ . '/../src/Resources/Contacts.php';
 require __DIR__ . '/../src/Resources/Visitors.php';
 require __DIR__ . '/../src/Resources/ErrorsResource.php';
+require __DIR__ . '/../src/Resources/Health.php';
 require __DIR__ . '/../src/Client.php';
 require __DIR__ . '/../src/WebhookHandler.php';
 
@@ -149,6 +151,16 @@ check('Leads::convertToCustomer() PATCHes /leads/{id} with type=customer', $mock
     && str_ends_with($mock6->requests[0]['url'], '/leads/7')
     && json_decode((string)$mock6->requests[0]['body'], true)['type'] === 'customer');
 check('Customers has no convertToLead() method - the reverse transition is not offered', !method_exists(\ZeroAI\Boss\Sdk\Resources\Customers::class, 'convertToLead'));
+
+// 9. Health::report() auto-collects metrics and posts them; overrides win over auto-collected values.
+$mock7 = new MockHttpClient();
+$mock7->queue(200, ['success' => true, 'data' => ['success' => true, 'accepted' => true, 'report_id' => 1]]);
+$bossHealth = new Client(['bearer_token' => 'tok', 'http_client' => $mock7]);
+$bossHealth->health()->report(['cpu_load_1' => 9.99]);
+$healthBody = json_decode((string)$mock7->requests[0]['body'], true);
+check('Health::report() posts to /system/health-reports', str_ends_with($mock7->requests[0]['url'], '/system/health-reports'));
+check('Health::report() auto-collects php_version', $healthBody['php_version'] === PHP_VERSION);
+check('Health::report() lets an override win over the auto-collected value', $healthBody['cpu_load_1'] === 9.99);
 
 echo "\n" . ($failures === 0 ? "ALL PASSED\n" : "{$failures} FAILURE(S)\n");
 exit($failures === 0 ? 0 : 1);

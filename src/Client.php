@@ -13,6 +13,7 @@ use ZeroAI\Boss\Sdk\Exceptions\ValidationException;
 use ZeroAI\Boss\Sdk\Resources\Contacts;
 use ZeroAI\Boss\Sdk\Resources\Customers;
 use ZeroAI\Boss\Sdk\Resources\ErrorsResource;
+use ZeroAI\Boss\Sdk\Resources\Health;
 use ZeroAI\Boss\Sdk\Resources\Leads;
 use ZeroAI\Boss\Sdk\Resources\Visitors;
 
@@ -32,7 +33,7 @@ use ZeroAI\Boss\Sdk\Resources\Visitors;
 final class Client
 {
     /** Bump alongside the git tag/CHANGELOG entry on every release - sent as X-Client-Version on every request so BOSS can see which SDK version is actually in use (BOSS project 43 feature #113). */
-    public const VERSION = '0.1.2';
+    public const VERSION = '0.1.3';
 
     private Config $config;
 
@@ -41,6 +42,7 @@ final class Client
     private Customers $customers;
     private Visitors $visitors;
     private ErrorsResource $errors;
+    private Health $health;
 
     public function __construct(array $config)
     {
@@ -51,6 +53,7 @@ final class Client
         $this->customers = new Customers($this);
         $this->visitors = new Visitors($this);
         $this->errors = new ErrorsResource($this);
+        $this->health = new Health($this);
     }
 
     public function leads(): Leads
@@ -76,6 +79,11 @@ final class Client
     public function errors(): ErrorsResource
     {
         return $this->errors;
+    }
+
+    public function health(): Health
+    {
+        return $this->health;
     }
 
     public function logger(): LoggerInterface
