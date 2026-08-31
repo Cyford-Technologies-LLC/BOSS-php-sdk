@@ -24,6 +24,7 @@ use ZeroAI\Boss\Sdk\Resources\Payments;
 use ZeroAI\Boss\Sdk\Resources\Products;
 use ZeroAI\Boss\Sdk\Resources\Routing;
 use ZeroAI\Boss\Sdk\Resources\Sales;
+use ZeroAI\Boss\Sdk\Resources\Social;
 use ZeroAI\Boss\Sdk\Resources\Visitors;
 use ZeroAI\Boss\Sdk\Resources\Webhooks;
 
@@ -43,7 +44,7 @@ use ZeroAI\Boss\Sdk\Resources\Webhooks;
 final class Client
 {
     /** Bump alongside the git tag/CHANGELOG entry on every release - sent as X-Client-Version on every request so BOSS can see which SDK version is actually in use (BOSS project 43 feature #113). */
-    public const VERSION = '0.1.7';
+    public const VERSION = '0.1.8';
 
     private Config $config;
 
@@ -63,6 +64,7 @@ final class Client
     private Agents $agents;
     private Payments $payments;
     private Media $media;
+    private Social $social;
 
     public function __construct(array $config)
     {
@@ -84,6 +86,7 @@ final class Client
         $this->agents = new Agents($this);
         $this->payments = new Payments($this);
         $this->media = new Media($this);
+        $this->social = new Social($this);
     }
 
     public function leads(): Leads
@@ -164,6 +167,11 @@ final class Client
     public function media(): Media
     {
         return $this->media;
+    }
+
+    public function social(): Social
+    {
+        return $this->social;
     }
 
     public function logger(): LoggerInterface

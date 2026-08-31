@@ -253,5 +253,40 @@ $bossMediaStatus = new Client(['bearer_token' => 'tok', 'http_client' => $mock19
 $bossMediaStatus->media()->getAvatarStatus('p_1');
 check('Media::getAvatarStatus() gets /media/video/generate-avatar/status', $mock19->requests[0]['method'] === 'GET' && str_contains($mock19->requests[0]['url'], '/media/video/generate-avatar/status'));
 
+// 14. Social (BOSS P43 #125) - verified live against the sandbox
+// (tests/manual_social_test.php, manual_social_fake_publish_test.php,
+// manual_social_company_scope_test.php): real drafts created on all 4
+// platforms, a real Facebook Graph API rejection confirmed for a fake page
+// token, and cross-company target access confirmed rejected.
+$mock20 = new MockHttpClient();
+$mock20->queue(201, ['success' => true, 'data' => ['post_id' => 1]]);
+$bossSocial = new Client(['bearer_token' => 'tok', 'http_client' => $mock20]);
+$bossSocial->social()->facebookCreatePost(['target_type' => 'page', 'target_id' => 1, 'message' => 'hi']);
+check('Social::facebookCreatePost() posts to /social/facebook/posts', str_ends_with($mock20->requests[0]['url'], '/social/facebook/posts'));
+
+$mock21 = new MockHttpClient();
+$mock21->queue(200, ['success' => true, 'data' => ['post_id' => 1, 'platform_post_id' => 'x']]);
+$bossSocial2 = new Client(['bearer_token' => 'tok', 'http_client' => $mock21]);
+$bossSocial2->social()->facebookPublishPost(1);
+check('Social::facebookPublishPost() posts to /social/facebook/posts/1/publish', str_ends_with($mock21->requests[0]['url'], '/social/facebook/posts/1/publish'));
+
+$mock22 = new MockHttpClient();
+$mock22->queue(201, ['success' => true, 'data' => ['post_id' => 1]]);
+$bossSocial3 = new Client(['bearer_token' => 'tok', 'http_client' => $mock22]);
+$bossSocial3->social()->instagramCreatePost(['ig_user_id' => 'x', 'image_url' => 'https://x/y.jpg']);
+check('Social::instagramCreatePost() posts to /social/instagram/posts', str_ends_with($mock22->requests[0]['url'], '/social/instagram/posts'));
+
+$mock23 = new MockHttpClient();
+$mock23->queue(201, ['success' => true, 'data' => ['post_id' => 1]]);
+$bossSocial4 = new Client(['bearer_token' => 'tok', 'http_client' => $mock23]);
+$bossSocial4->social()->linkedinCreatePost(['target_type' => 'profile', 'target_id' => 1, 'message' => 'hi']);
+check('Social::linkedinCreatePost() posts to /social/linkedin/posts', str_ends_with($mock23->requests[0]['url'], '/social/linkedin/posts'));
+
+$mock24 = new MockHttpClient();
+$mock24->queue(201, ['success' => true, 'data' => ['pin_id' => 1]]);
+$bossSocial5 = new Client(['bearer_token' => 'tok', 'http_client' => $mock24]);
+$bossSocial5->social()->pinterestCreatePin(['board_id' => 1, 'description' => 'x', 'image_url' => 'https://x/y.jpg']);
+check('Social::pinterestCreatePin() posts to /social/pinterest/pins', str_ends_with($mock24->requests[0]['url'], '/social/pinterest/pins'));
+
 echo "\n" . ($failures === 0 ? "ALL PASSED\n" : "{$failures} FAILURE(S)\n");
 exit($failures === 0 ? 0 : 1);
