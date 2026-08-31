@@ -288,5 +288,18 @@ $bossSocial5 = new Client(['bearer_token' => 'tok', 'http_client' => $mock24]);
 $bossSocial5->social()->pinterestCreatePin(['board_id' => 1, 'description' => 'x', 'image_url' => 'https://x/y.jpg']);
 check('Social::pinterestCreatePin() posts to /social/pinterest/pins', str_ends_with($mock24->requests[0]['url'], '/social/pinterest/pins'));
 
+// 15. Products::import() (BOSS P43 #112) - verified live against the sandbox
+// (tests/manual_inventory_import_test.php): opencart/woocommerce/canonical
+// schemas all confirmed importing real products, update-by-opencart_id
+// confirmed, and a category assigned via category_name confirmed preserved
+// across a later partial update that omits it.
+$mock25 = new MockHttpClient();
+$mock25->queue(200, ['success' => true, 'data' => ['created' => 1, 'updated' => 0, 'failed' => 0, 'errors' => []]]);
+$bossProductsImport = new Client(['bearer_token' => 'tok', 'http_client' => $mock25]);
+$bossProductsImport->products()->import('opencart', [['product_id' => 1, 'name' => 'x', 'price' => '1.00']]);
+check('Products::import() posts to /inventory/products/import', str_ends_with($mock25->requests[0]['url'], '/inventory/products/import'));
+$importBody = json_decode($mock25->requests[0]['body'] ?? '{}', true);
+check('Products::import() sends schema in the body', ($importBody['schema'] ?? null) === 'opencart');
+
 echo "\n" . ($failures === 0 ? "ALL PASSED\n" : "{$failures} FAILURE(S)\n");
 exit($failures === 0 ? 0 : 1);
