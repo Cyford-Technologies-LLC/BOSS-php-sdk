@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace ZeroAI\Boss\Sdk\Resources;
 
+use ZeroAI\Boss\Sdk\ResourceRecord;
+
 /**
  * Wraps the "canonical" leads surface per ENDPOINTS.md open question #1.
  *
@@ -31,11 +33,16 @@ namespace ZeroAI\Boss\Sdk\Resources;
  */
 final class Leads extends AbstractResource
 {
-    public function create(array $data): array
+    use CreatesRecords;
+
+    public function create(array $data): ResourceRecord
     {
         // ['type' => 'lead'] listed first so it always wins over a conflicting key in $data -
         // this resource forces the type, mirroring Customers::create()'s forced 'customer'.
-        return $this->client->call('POST', '/crm/leads', [], ['type' => 'lead'] + $data);
+        return $this->createdRecord(
+            $this->client->call('POST', '/crm/leads', [], ['type' => 'lead'] + $data),
+            'lead'
+        );
     }
 
     public function list(array $filters = []): array

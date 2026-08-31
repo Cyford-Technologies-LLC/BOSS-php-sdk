@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace ZeroAI\Boss\Sdk\Resources;
 
+use ZeroAI\Boss\Sdk\ResourceRecord;
+
 /**
  * Customers are leads rows with type='customer' (BOSS #500). As of
  * 2026-08-29 the leads endpoints were expanded to cover this directly
@@ -22,12 +24,17 @@ namespace ZeroAI\Boss\Sdk\Resources;
  */
 final class Customers extends AbstractResource
 {
-    public function create(array $data): array
+    use CreatesRecords;
+
+    public function create(array $data): ResourceRecord
     {
         // ['type' => 'customer'] listed first so it always wins over a conflicting key in
         // $data (PHP array union keeps the left operand's value on key collision) - this
         // resource forces the type, it never lets a caller create a plain lead through it.
-        return $this->client->call('POST', '/crm/leads', [], ['type' => 'customer'] + $data);
+        return $this->createdRecord(
+            $this->client->call('POST', '/crm/leads', [], ['type' => 'customer'] + $data),
+            'lead'
+        );
     }
 
     public function list(array $filters = []): array

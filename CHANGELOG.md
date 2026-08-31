@@ -31,6 +31,9 @@ Compatibility matrix: SDK version → minimum BOSS API version.
 
 ### Fixed
 - The "confirmed hard gap" below no longer applies - kept for history.
+- `Leads::create()` and `Customers::create()` now return the created record
+  directly with both object and array access, so documented examples like
+  `$lead->id` expose the inserted record ID instead of reading as missing.
 
 ## [0.1.0] - 2026-08-29 (unreleased, not yet tagged/published)
 

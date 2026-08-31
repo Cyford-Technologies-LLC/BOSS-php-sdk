@@ -20,7 +20,9 @@ require __DIR__ . '/../src/Http/CurlHttpClient.php';
 require __DIR__ . '/../src/Http/MockHttpClient.php';
 require __DIR__ . '/../src/Auth/RequestSigner.php';
 require __DIR__ . '/../src/Config.php';
+require __DIR__ . '/../src/ResourceRecord.php';
 require __DIR__ . '/../src/Resources/AbstractResource.php';
+require __DIR__ . '/../src/Resources/CreatesRecords.php';
 require __DIR__ . '/../src/Resources/Leads.php';
 require __DIR__ . '/../src/Resources/Customers.php';
 require __DIR__ . '/../src/Resources/Contacts.php';
@@ -61,7 +63,8 @@ $boss = new Client([
     'http_client' => $mock,
 ]);
 $result = $boss->leads()->create(['name' => 'Jane']);
-check('Leads::create() unwraps data', ($result['lead']['id'] ?? null) === 42);
+check('Leads::create() returns the created record id via array access', ($result['id'] ?? null) === 42);
+check('Leads::create() returns the created record id via object access', ($result->id ?? null) === 42);
 check('X-Client-Name header identifies this SDK', ($mock->requests[0]['headers']['X-Client-Name'] ?? null) === 'boss-php-sdk');
 check('X-Client-Version header matches Client::VERSION', ($mock->requests[0]['headers']['X-Client-Version'] ?? null) === \ZeroAI\Boss\Sdk\Client::VERSION);
 check('Request went to POST /crm/leads', $mock->requests[0]['method'] === 'POST' && str_ends_with($mock->requests[0]['url'], '/crm/leads'));
@@ -129,10 +132,11 @@ try {
 $mock5 = new MockHttpClient();
 $mock5->queue(200, ['success' => true, 'data' => ['lead' => ['id' => 7, 'type' => 'customer']]]);
 $bossCust = new Client(['bearer_token' => 'tok', 'http_client' => $mock5]);
-$bossCust->customers()->create(['name' => 'Acme Inc', 'type' => 'lead']);
+$customerResult = $bossCust->customers()->create(['name' => 'Acme Inc', 'type' => 'lead']);
 $sentBody = json_decode((string)$mock5->requests[0]['body'], true);
 check('Customers::create() forces type=customer even if caller passes type=lead', $sentBody['type'] === 'customer');
 check('Customers::create() posts to /crm/leads', str_ends_with($mock5->requests[0]['url'], '/crm/leads'));
+check('Customers::create() returns the created customer id via object access', ($customerResult->id ?? null) === 7);
 
 // 8. Leads::convertToCustomer() - one-way only, per user direction ("a customer is a
 // customer forever"). There is deliberately no Customers::convertToLead() - the server

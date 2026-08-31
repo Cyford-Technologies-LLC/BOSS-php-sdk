@@ -62,6 +62,9 @@ $customer = $boss->customers()->create(['name' => 'Acme Inc', 'email' => 'billin
 $boss->visitors()->trackEvent('page_view', ['page_url' => 'https://example.com/pricing']);
 ```
 
+Single-record create calls return the created record and support both object and
+array access: `$lead->id` and `$lead['id']` are equivalent.
+
 ## Config
 
 - `client_id` / `client_secret` — the signed-client credential (or use
