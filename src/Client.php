@@ -10,6 +10,7 @@ use ZeroAI\Boss\Sdk\Exceptions\AuthException;
 use ZeroAI\Boss\Sdk\Exceptions\RateLimitException;
 use ZeroAI\Boss\Sdk\Exceptions\SdkException;
 use ZeroAI\Boss\Sdk\Exceptions\ValidationException;
+use ZeroAI\Boss\Sdk\Resources\Agents;
 use ZeroAI\Boss\Sdk\Resources\Booking;
 use ZeroAI\Boss\Sdk\Resources\Communications;
 use ZeroAI\Boss\Sdk\Resources\Contacts;
@@ -18,6 +19,7 @@ use ZeroAI\Boss\Sdk\Resources\ErrorsResource;
 use ZeroAI\Boss\Sdk\Resources\Funnels;
 use ZeroAI\Boss\Sdk\Resources\Health;
 use ZeroAI\Boss\Sdk\Resources\Leads;
+use ZeroAI\Boss\Sdk\Resources\Payments;
 use ZeroAI\Boss\Sdk\Resources\Products;
 use ZeroAI\Boss\Sdk\Resources\Routing;
 use ZeroAI\Boss\Sdk\Resources\Sales;
@@ -40,7 +42,7 @@ use ZeroAI\Boss\Sdk\Resources\Webhooks;
 final class Client
 {
     /** Bump alongside the git tag/CHANGELOG entry on every release - sent as X-Client-Version on every request so BOSS can see which SDK version is actually in use (BOSS project 43 feature #113). */
-    public const VERSION = '0.1.4';
+    public const VERSION = '0.1.5';
 
     private Config $config;
 
@@ -57,6 +59,8 @@ final class Client
     private Communications $communications;
     private Routing $routing;
     private Funnels $funnels;
+    private Agents $agents;
+    private Payments $payments;
 
     public function __construct(array $config)
     {
@@ -75,6 +79,8 @@ final class Client
         $this->communications = new Communications($this);
         $this->routing = new Routing($this);
         $this->funnels = new Funnels($this);
+        $this->agents = new Agents($this);
+        $this->payments = new Payments($this);
     }
 
     public function leads(): Leads
@@ -140,6 +146,16 @@ final class Client
     public function funnels(): Funnels
     {
         return $this->funnels;
+    }
+
+    public function agents(): Agents
+    {
+        return $this->agents;
+    }
+
+    public function payments(): Payments
+    {
+        return $this->payments;
     }
 
     public function logger(): LoggerInterface

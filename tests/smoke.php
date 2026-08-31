@@ -37,6 +37,8 @@ require __DIR__ . '/../src/Resources/Sales.php';
 require __DIR__ . '/../src/Resources/Communications.php';
 require __DIR__ . '/../src/Resources/Routing.php';
 require __DIR__ . '/../src/Resources/Funnels.php';
+require __DIR__ . '/../src/Resources/Agents.php';
+require __DIR__ . '/../src/Resources/Payments.php';
 require __DIR__ . '/../src/Client.php';
 require __DIR__ . '/../src/WebhookHandler.php';
 
@@ -213,6 +215,20 @@ $mock14->queue(200, ['success' => true, 'data' => ['entries' => []]]);
 $bossFunnels = new Client(['bearer_token' => 'tok', 'http_client' => $mock14]);
 $bossFunnels->funnels()->entries();
 check('Funnels::entries() gets /funnels/entries', str_ends_with($mock14->requests[0]['url'], '/funnels/entries'));
+
+// 11. Agents/Payments (BOSS P43 #118-119, resolved via #132 disambiguation) - verified
+// live against the sandbox (tests/manual_new_resources_test.php).
+$mock15 = new MockHttpClient();
+$mock15->queue(200, ['success' => true, 'data' => ['reply' => 'pong']]);
+$bossAgents = new Client(['bearer_token' => 'tok', 'http_client' => $mock15]);
+$bossAgents->agents()->chat(['agent_id' => 1, 'message' => 'hi']);
+check('Agents::chat() posts to /crm/agents/chat', str_ends_with($mock15->requests[0]['url'], '/crm/agents/chat'));
+
+$mock16 = new MockHttpClient();
+$mock16->queue(200, ['success' => true, 'data' => ['intent' => ['id' => 'pi_1']]]);
+$bossPay = new Client(['bearer_token' => 'tok', 'http_client' => $mock16]);
+$bossPay->payments()->createIntent(['amount_cents' => 1000, 'currency' => 'usd']);
+check('Payments::createIntent() posts to /payments/payment-intents', str_ends_with($mock16->requests[0]['url'], '/payments/payment-intents'));
 
 echo "\n" . ($failures === 0 ? "ALL PASSED\n" : "{$failures} FAILURE(S)\n");
 exit($failures === 0 ? 0 : 1);
