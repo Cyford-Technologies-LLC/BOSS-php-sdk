@@ -10,12 +10,19 @@ use ZeroAI\Boss\Sdk\Exceptions\AuthException;
 use ZeroAI\Boss\Sdk\Exceptions\RateLimitException;
 use ZeroAI\Boss\Sdk\Exceptions\SdkException;
 use ZeroAI\Boss\Sdk\Exceptions\ValidationException;
+use ZeroAI\Boss\Sdk\Resources\Booking;
+use ZeroAI\Boss\Sdk\Resources\Communications;
 use ZeroAI\Boss\Sdk\Resources\Contacts;
 use ZeroAI\Boss\Sdk\Resources\Customers;
 use ZeroAI\Boss\Sdk\Resources\ErrorsResource;
+use ZeroAI\Boss\Sdk\Resources\Funnels;
 use ZeroAI\Boss\Sdk\Resources\Health;
 use ZeroAI\Boss\Sdk\Resources\Leads;
+use ZeroAI\Boss\Sdk\Resources\Products;
+use ZeroAI\Boss\Sdk\Resources\Routing;
+use ZeroAI\Boss\Sdk\Resources\Sales;
 use ZeroAI\Boss\Sdk\Resources\Visitors;
+use ZeroAI\Boss\Sdk\Resources\Webhooks;
 
 /**
  * Entry point for the BOSS PHP SDK.
@@ -33,7 +40,7 @@ use ZeroAI\Boss\Sdk\Resources\Visitors;
 final class Client
 {
     /** Bump alongside the git tag/CHANGELOG entry on every release - sent as X-Client-Version on every request so BOSS can see which SDK version is actually in use (BOSS project 43 feature #113). */
-    public const VERSION = '0.1.3';
+    public const VERSION = '0.1.4';
 
     private Config $config;
 
@@ -43,6 +50,13 @@ final class Client
     private Visitors $visitors;
     private ErrorsResource $errors;
     private Health $health;
+    private Webhooks $webhooks;
+    private Booking $booking;
+    private Products $products;
+    private Sales $sales;
+    private Communications $communications;
+    private Routing $routing;
+    private Funnels $funnels;
 
     public function __construct(array $config)
     {
@@ -54,6 +68,13 @@ final class Client
         $this->visitors = new Visitors($this);
         $this->errors = new ErrorsResource($this);
         $this->health = new Health($this);
+        $this->webhooks = new Webhooks($this);
+        $this->booking = new Booking($this);
+        $this->products = new Products($this);
+        $this->sales = new Sales($this);
+        $this->communications = new Communications($this);
+        $this->routing = new Routing($this);
+        $this->funnels = new Funnels($this);
     }
 
     public function leads(): Leads
@@ -84,6 +105,41 @@ final class Client
     public function health(): Health
     {
         return $this->health;
+    }
+
+    public function webhooks(): Webhooks
+    {
+        return $this->webhooks;
+    }
+
+    public function booking(): Booking
+    {
+        return $this->booking;
+    }
+
+    public function products(): Products
+    {
+        return $this->products;
+    }
+
+    public function sales(): Sales
+    {
+        return $this->sales;
+    }
+
+    public function communications(): Communications
+    {
+        return $this->communications;
+    }
+
+    public function routing(): Routing
+    {
+        return $this->routing;
+    }
+
+    public function funnels(): Funnels
+    {
+        return $this->funnels;
     }
 
     public function logger(): LoggerInterface

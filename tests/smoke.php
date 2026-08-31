@@ -30,6 +30,13 @@ require __DIR__ . '/../src/Resources/Contacts.php';
 require __DIR__ . '/../src/Resources/Visitors.php';
 require __DIR__ . '/../src/Resources/ErrorsResource.php';
 require __DIR__ . '/../src/Resources/Health.php';
+require __DIR__ . '/../src/Resources/Webhooks.php';
+require __DIR__ . '/../src/Resources/Booking.php';
+require __DIR__ . '/../src/Resources/Products.php';
+require __DIR__ . '/../src/Resources/Sales.php';
+require __DIR__ . '/../src/Resources/Communications.php';
+require __DIR__ . '/../src/Resources/Routing.php';
+require __DIR__ . '/../src/Resources/Funnels.php';
 require __DIR__ . '/../src/Client.php';
 require __DIR__ . '/../src/WebhookHandler.php';
 
@@ -161,6 +168,51 @@ $healthBody = json_decode((string)$mock7->requests[0]['body'], true);
 check('Health::report() posts to /system/health-reports', str_ends_with($mock7->requests[0]['url'], '/system/health-reports'));
 check('Health::report() auto-collects php_version', $healthBody['php_version'] === PHP_VERSION);
 check('Health::report() lets an override win over the auto-collected value', $healthBody['cpu_load_1'] === 9.99);
+
+// 10. Newly-wrapped resources (BOSS P43 #115-117, #120-122) - each just needs to hit the
+// right verb/path; real end-to-end behavior was verified live against the sandbox
+// (tests/manual_new_resources_test.php), not repeated here.
+$mock8 = new MockHttpClient();
+$mock8->queue(200, ['success' => true, 'data' => ['subscription' => ['id' => 1]]]);
+$bossWh = new Client(['bearer_token' => 'tok', 'http_client' => $mock8]);
+$bossWh->webhooks()->create(['name' => 'x', 'target_url' => 'https://example.com', 'event_types' => ['lead.created']]);
+check('Webhooks::create() posts to /webhooks/subscriptions', str_ends_with($mock8->requests[0]['url'], '/webhooks/subscriptions'));
+
+$mock9 = new MockHttpClient();
+$mock9->queue(200, ['success' => true, 'data' => ['schedule' => ['id' => 1]]]);
+$bossBooking = new Client(['bearer_token' => 'tok', 'http_client' => $mock9]);
+$bossBooking->booking()->create(['customer_lead_id' => 1]);
+check('Booking::create() posts to /booking/schedules', str_ends_with($mock9->requests[0]['url'], '/booking/schedules'));
+
+$mock10 = new MockHttpClient();
+$mock10->queue(200, ['success' => true, 'data' => ['product' => ['id' => 1]]]);
+$bossProducts = new Client(['bearer_token' => 'tok', 'http_client' => $mock10]);
+$bossProducts->products()->adjustStock(5, ['qty' => -1, 'type' => 'sale']);
+check('Products::adjustStock() posts to /inventory/products/{id}/stock', str_ends_with($mock10->requests[0]['url'], '/inventory/products/5/stock'));
+
+$mock11 = new MockHttpClient();
+$mock11->queue(200, ['success' => true, 'data' => ['sale' => ['id' => 1]]]);
+$bossSales = new Client(['bearer_token' => 'tok', 'http_client' => $mock11]);
+$bossSales->sales()->create(['title' => 'x']);
+check('Sales::create() posts to /crm/sales', str_ends_with($mock11->requests[0]['url'], '/crm/sales'));
+
+$mock12 = new MockHttpClient();
+$mock12->queue(200, ['success' => true, 'data' => []]);
+$bossComms = new Client(['bearer_token' => 'tok', 'http_client' => $mock12]);
+$bossComms->communications()->sendSms(['to' => '+15550001111', 'message' => 'hi']);
+check('Communications::sendSms() posts to /communications/sms', str_ends_with($mock12->requests[0]['url'], '/communications/sms'));
+
+$mock13 = new MockHttpClient();
+$mock13->queue(200, ['success' => true, 'data' => ['fare' => 12.5]]);
+$bossRouting = new Client(['bearer_token' => 'tok', 'http_client' => $mock13]);
+$bossRouting->routing()->fare(['distance_miles' => 5, 'duration_minutes' => 12]);
+check('Routing::fare() gets /routing/fare', $mock13->requests[0]['method'] === 'GET' && str_contains($mock13->requests[0]['url'], '/routing/fare'));
+
+$mock14 = new MockHttpClient();
+$mock14->queue(200, ['success' => true, 'data' => ['entries' => []]]);
+$bossFunnels = new Client(['bearer_token' => 'tok', 'http_client' => $mock14]);
+$bossFunnels->funnels()->entries();
+check('Funnels::entries() gets /funnels/entries', str_ends_with($mock14->requests[0]['url'], '/funnels/entries'));
 
 echo "\n" . ($failures === 0 ? "ALL PASSED\n" : "{$failures} FAILURE(S)\n");
 exit($failures === 0 ? 0 : 1);
