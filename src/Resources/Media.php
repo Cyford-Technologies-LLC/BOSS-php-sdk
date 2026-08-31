@@ -23,4 +23,26 @@ final class Media extends AbstractResource
         $body = array_merge(['prompt' => $prompt, 'model' => $model], $options);
         return $this->client->call('POST', '/media/images/generate', [], $body);
     }
+
+    /**
+     * BOSS project 43 feature #124. Starts an async talking-avatar video
+     * generation (SadTalker by default) - image_url + audio_url in,
+     * prediction_id back immediately (does not generate TTS itself, bring
+     * your own audio_url). Poll getAvatarStatus() for the result.
+     */
+    public function generateAvatar(string $imageUrl, string $audioUrl, string $model = 'cjwbw/sadtalker', array $options = []): array
+    {
+        return $this->client->call('POST', '/media/video/generate-avatar', [], [
+            'image_url' => $imageUrl,
+            'audio_url' => $audioUrl,
+            'model' => $model,
+            'options' => $options,
+        ]);
+    }
+
+    /** Poll a prediction_id returned by generateAvatar(). Throws a 404 ApiException if it wasn't started by this org. */
+    public function getAvatarStatus(string $predictionId): array
+    {
+        return $this->client->call('GET', '/media/video/generate-avatar/status', ['prediction_id' => $predictionId]);
+    }
 }

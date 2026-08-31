@@ -238,5 +238,20 @@ $bossMedia = new Client(['bearer_token' => 'tok', 'http_client' => $mock17]);
 $bossMedia->media()->generateImage('a red bicycle');
 check('Media::generateImage() posts to /media/images/generate', str_ends_with($mock17->requests[0]['url'], '/media/images/generate'));
 
+// 13. Media video (BOSS P43 #124) - verified live against the sandbox
+// (tests/manual_media_video_test.php): real Replicate calls confirmed
+// reaching the tenant's own account, plus a real 404 for an unowned prediction.
+$mock18 = new MockHttpClient();
+$mock18->queue(200, ['success' => true, 'data' => ['prediction_id' => 'p_1', 'status' => 'starting']]);
+$bossMediaVideo = new Client(['bearer_token' => 'tok', 'http_client' => $mock18]);
+$bossMediaVideo->media()->generateAvatar('https://x/face.jpg', 'https://x/speech.mp3');
+check('Media::generateAvatar() posts to /media/video/generate-avatar', str_ends_with($mock18->requests[0]['url'], '/media/video/generate-avatar'));
+
+$mock19 = new MockHttpClient();
+$mock19->queue(200, ['success' => true, 'data' => ['status' => 'succeeded']]);
+$bossMediaStatus = new Client(['bearer_token' => 'tok', 'http_client' => $mock19]);
+$bossMediaStatus->media()->getAvatarStatus('p_1');
+check('Media::getAvatarStatus() gets /media/video/generate-avatar/status', $mock19->requests[0]['method'] === 'GET' && str_contains($mock19->requests[0]['url'], '/media/video/generate-avatar/status'));
+
 echo "\n" . ($failures === 0 ? "ALL PASSED\n" : "{$failures} FAILURE(S)\n");
 exit($failures === 0 ? 0 : 1);
