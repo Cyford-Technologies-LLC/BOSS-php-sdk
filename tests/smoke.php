@@ -230,5 +230,13 @@ $bossPay = new Client(['bearer_token' => 'tok', 'http_client' => $mock16]);
 $bossPay->payments()->createIntent(['amount_cents' => 1000, 'currency' => 'usd']);
 check('Payments::createIntent() posts to /payments/payment-intents', str_ends_with($mock16->requests[0]['url'], '/payments/payment-intents'));
 
+// 12. Media (BOSS P43 #123) - verified live against the sandbox
+// (tests/manual_media_test.php): a real Replicate image was generated.
+$mock17 = new MockHttpClient();
+$mock17->queue(200, ['success' => true, 'data' => ['image_url' => 'https://replicate.delivery/x.webp']]);
+$bossMedia = new Client(['bearer_token' => 'tok', 'http_client' => $mock17]);
+$bossMedia->media()->generateImage('a red bicycle');
+check('Media::generateImage() posts to /media/images/generate', str_ends_with($mock17->requests[0]['url'], '/media/images/generate'));
+
 echo "\n" . ($failures === 0 ? "ALL PASSED\n" : "{$failures} FAILURE(S)\n");
 exit($failures === 0 ? 0 : 1);
