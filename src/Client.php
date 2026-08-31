@@ -44,7 +44,7 @@ use ZeroAI\Boss\Sdk\Resources\Webhooks;
 final class Client
 {
     /** Bump alongside the git tag/CHANGELOG entry on every release - sent as X-Client-Version on every request so BOSS can see which SDK version is actually in use (BOSS project 43 feature #113). */
-    public const VERSION = '0.1.9';
+    public const VERSION = '0.2.0';
 
     private Config $config;
 
@@ -65,6 +65,9 @@ final class Client
     private Payments $payments;
     private Media $media;
     private Social $social;
+
+    /** Recursion guard - health()->report() itself calls call(), which must not re-trigger the auto-report piggyback check. */
+    private bool $autoHealthReportInProgress = false;
 
     public function __construct(array $config)
     {
@@ -191,6 +194,66 @@ final class Client
      * @throws AuthException|RateLimitException|ValidationException|ApiException|SdkException
      */
     public function call(string $method, string $path, array $query = [], array $body = [], array $options = []): array
+    {
+        try {
+            return $this->doCall($method, $path, $query, $body, $options);
+        } finally {
+            $this->maybeAutoReportHealth($path);
+        }
+    }
+
+    /**
+     * BOSS project 43 feature #126 follow-up - "no cron required" health
+     * reporting (user: "make it only check when it is set in the sdk
+     * settings... n time can be specified too, with a default of 1 hour").
+     * Off unless Config::$autoHealthReport is explicitly true. When on,
+     * every call() opportunistically sends a health report once
+     * autoHealthReportIntervalSeconds has elapsed since the last one,
+     * piggybacking on whatever traffic/SDK usage the integrator's site
+     * already has - no cron job required. A local file (not a DB row) tracks
+     * the last-sent time, since this must work even for an integrator with
+     * no server access beyond PHP itself.
+     *
+     * A WordPress plugin embedding this SDK should prefer wp_schedule_event()
+     * for its own health-report timing instead of turning this on - stacking
+     * two independent "check on every request" mechanisms (this one and
+     * wp-cron's own pseudo-cron page-load check) on every WP page load is
+     * wasteful and harder to reason about than using WP's native scheduler.
+     */
+    private function maybeAutoReportHealth(string $path): void
+    {
+        if (!$this->config->autoHealthReport || $this->autoHealthReportInProgress) {
+            return;
+        }
+        if ($path === '/system/health-reports') {
+            return; // never piggyback on the health report call itself
+        }
+
+        $cacheFile = $this->autoHealthReportCacheFile();
+        $lastSent = is_file($cacheFile) ? (int)@file_get_contents($cacheFile) : 0;
+        if (time() - $lastSent < $this->config->autoHealthReportIntervalSeconds) {
+            return;
+        }
+
+        $this->autoHealthReportInProgress = true;
+        try {
+            $this->health()->report();
+            @file_put_contents($cacheFile, (string)time());
+        } catch (\Throwable $e) {
+            // A background health report must never break the caller's real request.
+            $this->config->logger->debug('BOSS SDK auto health report failed', ['error' => $e->getMessage()]);
+        } finally {
+            $this->autoHealthReportInProgress = false;
+        }
+    }
+
+    private function autoHealthReportCacheFile(): string
+    {
+        $key = $this->config->clientId ?? $this->config->bearerToken ?? 'default';
+        return sys_get_temp_dir() . '/boss_sdk_auto_health_' . md5((string)$key) . '.ts';
+    }
+
+    private function doCall(string $method, string $path, array $query = [], array $body = [], array $options = []): array
     {
         $method = strtoupper($method);
         $path = '/' . ltrim($path, '/');

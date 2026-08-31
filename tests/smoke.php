@@ -301,5 +301,48 @@ check('Products::import() posts to /inventory/products/import', str_ends_with($m
 $importBody = json_decode($mock25->requests[0]['body'] ?? '{}', true);
 check('Products::import() sends schema in the body', ($importBody['schema'] ?? null) === 'opencart');
 
+// 16. Auto health-report piggyback (BOSS P43 #126 follow-up, user: "make it
+// only check when it is set in the sdk settings... n time can be specified
+// too, with a default of 1 hour"). Off unless explicitly enabled; when on,
+// call() opportunistically sends a health report once the interval has
+// elapsed, tracked via a local file so it works with zero server access
+// beyond PHP. Each test below uses a unique credential (uniqid) so its
+// /tmp cache file can never collide with a previous smoke.php run's.
+$mock26 = new MockHttpClient();
+$mock26->queue(200, ['success' => true, 'data' => ['lead' => ['id' => 1]]]);
+$bossNoAuto = new Client(['bearer_token' => uniqid('smoke-no-auto-', true), 'http_client' => $mock26]);
+$bossNoAuto->leads()->create(['name' => 'x']);
+check('Auto health report is off by default - no extra request', count($mock26->requests) === 1);
+
+$mock27 = new MockHttpClient();
+$mock27->queue(200, ['success' => true, 'data' => ['lead' => ['id' => 1]]]); // the real call
+$mock27->queue(200, ['success' => true, 'data' => ['accepted' => true]]);    // the piggybacked report
+$bossAuto = new Client(['bearer_token' => uniqid('smoke-auto-on-', true), 'http_client' => $mock27, 'auto_health_report' => true]);
+$bossAuto->leads()->create(['name' => 'x']);
+check('auto_health_report=true piggybacks a second request', count($mock27->requests) === 2);
+check('the piggybacked request posts to /system/health-reports', str_ends_with($mock27->requests[1]['url'], '/system/health-reports'));
+
+$mock28 = new MockHttpClient();
+$mock28->queue(200, ['success' => true, 'data' => ['lead' => ['id' => 1]]]); // call 1
+$mock28->queue(200, ['success' => true, 'data' => ['accepted' => true]]);    // report (fires once)
+$mock28->queue(200, ['success' => true, 'data' => ['lead' => ['id' => 2]]]); // call 2 - no second report, interval not elapsed
+$bossAutoTwice = new Client(['bearer_token' => uniqid('smoke-auto-interval-', true), 'http_client' => $mock28, 'auto_health_report' => true]);
+$bossAutoTwice->leads()->create(['name' => 'x']);
+$bossAutoTwice->leads()->create(['name' => 'y']);
+check('Auto health report fires only once across 2 calls within the interval window', count($mock28->requests) === 3);
+
+$mock29 = new MockHttpClient();
+$mock29->queue(200, ['success' => true, 'data' => ['accepted' => true]]);
+$bossAutoDirect = new Client(['bearer_token' => uniqid('smoke-auto-direct-', true), 'http_client' => $mock29, 'auto_health_report' => true]);
+$bossAutoDirect->health()->report();
+check('Calling health()->report() directly does not recurse into a second auto report', count($mock29->requests) === 1);
+
+try {
+    new Client(['bearer_token' => uniqid('smoke-auto-badinterval-', true), 'auto_health_report' => true, 'auto_health_report_interval' => 30]);
+    check('auto_health_report_interval below 60s throws ValidationException', false);
+} catch (ValidationException $e) {
+    check('auto_health_report_interval below 60s throws ValidationException', true);
+}
+
 echo "\n" . ($failures === 0 ? "ALL PASSED\n" : "{$failures} FAILURE(S)\n");
 exit($failures === 0 ? 0 : 1);

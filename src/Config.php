@@ -42,6 +42,21 @@ final class Config
     /** Verbose request/response logging. Credentials are always redacted, even here. */
     public bool $debug;
 
+    /**
+     * Opt-in "no cron required" health reporting (BOSS project 43 feature #126
+     * follow-up, user: "make it only check when it is set in the sdk settings...
+     * n time can be specified too, with a default of 1 hour"). When true, every
+     * call() opportunistically sends a health report if autoHealthReportIntervalSeconds
+     * has elapsed since the last one - piggybacking on whatever traffic/SDK usage the
+     * site already has instead of requiring the integrator to set up their own cron job.
+     * Off by default: an SMB with no developer gets this for free once they turn it on,
+     * but it never activates silently.
+     */
+    public bool $autoHealthReport;
+
+    /** Minimum seconds between auto health reports. Default 3600 (1 hour). Floor of 60s. */
+    public int $autoHealthReportIntervalSeconds;
+
     private function __construct()
     {
     }
@@ -83,6 +98,12 @@ final class Config
         $self->logger = $config['logger'] ?? new NullLogger();
         $self->httpClient = $config['http_client'] ?? new CurlHttpClient($self->timeoutMs);
         $self->debug = (bool)($config['debug'] ?? false);
+
+        $self->autoHealthReport = (bool)($config['auto_health_report'] ?? false);
+        $self->autoHealthReportIntervalSeconds = (int)($config['auto_health_report_interval'] ?? 3600);
+        if ($self->autoHealthReportIntervalSeconds < 60) {
+            throw new ValidationException('auto_health_report_interval must be at least 60 seconds.');
+        }
 
         return $self;
     }
