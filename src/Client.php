@@ -69,6 +69,14 @@ final class Client
     /** Recursion guard - health()->report() itself calls call(), which must not re-trigger the auto-report piggyback check. */
     private bool $autoHealthReportInProgress = false;
 
+    /**
+     * True only when auto health reporting is on AND the traffic-piggyback path (checked
+     * from call()) should drive it. False when a native scheduler (currently: WordPress's
+     * wp_schedule_event) is driving it instead - see initAutoHealthReport(). An integrator
+     * never sets this directly; it's derived once, automatically, from the runtime.
+     */
+    private bool $autoHealthReportViaTraffic = false;
+
     public function __construct(array $config)
     {
         $this->config = Config::fromArray($config);
@@ -90,6 +98,102 @@ final class Client
         $this->payments = new Payments($this);
         $this->media = new Media($this);
         $this->social = new Social($this);
+
+        $this->initAutoHealthReport();
+    }
+
+    /**
+     * BOSS project 43 feature #126 follow-up (user: "make the apps and
+     * plugin automatically route to the proper cron, based on platform...
+     * do not make end users need to figure out what to do"). One config
+     * flag (`auto_health_report`), one behavior from the integrator's point
+     * of view - the SDK detects its own runtime and picks the right
+     * scheduling mechanism with zero platform-specific code required from
+     * whoever embeds it:
+     *
+     *  - Running inside WordPress (ABSPATH defined, wp_schedule_event
+     *    available): registers a real wp_schedule_event() cron - reliable,
+     *    native, and doesn't stack a second "check every request" mechanism
+     *    on top of wp-cron's own page-load check.
+     *  - Anywhere else (plain PHP app, CLI script): falls back to the
+     *    traffic-piggyback checked from call() - opportunistic, no cron
+     *    access required at all.
+     *
+     * Turning the flag off also actively unschedules any previously-
+     * registered WordPress cron for this same credential, so flipping a
+     * settings checkbox off in wp-admin doesn't leave an orphaned schedule
+     * behind - no separate "disable" step for an integrator to remember.
+     */
+    private function initAutoHealthReport(): void
+    {
+        $isWordPress = self::isWordPressRuntime();
+
+        if (!$this->config->autoHealthReport) {
+            if ($isWordPress) {
+                $this->unscheduleWordPressHealthCron();
+            }
+            $this->autoHealthReportViaTraffic = false;
+            return;
+        }
+
+        if ($isWordPress) {
+            $this->scheduleWordPressHealthCron();
+            $this->autoHealthReportViaTraffic = false;
+        } else {
+            $this->autoHealthReportViaTraffic = true;
+        }
+    }
+
+    private static function isWordPressRuntime(): bool
+    {
+        return defined('ABSPATH')
+            && function_exists('wp_schedule_event')
+            && function_exists('wp_next_scheduled')
+            && function_exists('add_action')
+            && function_exists('add_filter');
+    }
+
+    private function autoHealthReportHookName(): string
+    {
+        $key = $this->config->clientId ?? $this->config->bearerToken ?? 'default';
+        return 'boss_sdk_health_report_' . substr(md5((string)$key), 0, 16);
+    }
+
+    private function scheduleWordPressHealthCron(): void
+    {
+        $hook = $this->autoHealthReportHookName();
+        $intervalSeconds = $this->config->autoHealthReportIntervalSeconds;
+        $recurrence = 'boss_sdk_interval_' . $intervalSeconds;
+
+        add_filter('cron_schedules', static function (array $schedules) use ($recurrence, $intervalSeconds): array {
+            if (!isset($schedules[$recurrence])) {
+                $schedules[$recurrence] = [
+                    'interval' => $intervalSeconds,
+                    'display' => 'BOSS SDK health report (' . $intervalSeconds . 's)',
+                ];
+            }
+            return $schedules;
+        });
+
+        add_action($hook, function (): void {
+            try {
+                $this->health()->report();
+            } catch (\Throwable $e) {
+                $this->config->logger->debug('BOSS SDK wp-cron health report failed', ['error' => $e->getMessage()]);
+            }
+        });
+
+        if (!wp_next_scheduled($hook)) {
+            wp_schedule_event(time(), $recurrence, $hook);
+        }
+    }
+
+    private function unscheduleWordPressHealthCron(): void
+    {
+        $hook = $this->autoHealthReportHookName();
+        if (wp_next_scheduled($hook)) {
+            wp_clear_scheduled_hook($hook);
+        }
     }
 
     public function leads(): Leads
@@ -203,26 +307,20 @@ final class Client
     }
 
     /**
-     * BOSS project 43 feature #126 follow-up - "no cron required" health
-     * reporting (user: "make it only check when it is set in the sdk
-     * settings... n time can be specified too, with a default of 1 hour").
-     * Off unless Config::$autoHealthReport is explicitly true. When on,
-     * every call() opportunistically sends a health report once
-     * autoHealthReportIntervalSeconds has elapsed since the last one,
-     * piggybacking on whatever traffic/SDK usage the integrator's site
-     * already has - no cron job required. A local file (not a DB row) tracks
-     * the last-sent time, since this must work even for an integrator with
-     * no server access beyond PHP itself.
-     *
-     * A WordPress plugin embedding this SDK should prefer wp_schedule_event()
-     * for its own health-report timing instead of turning this on - stacking
-     * two independent "check on every request" mechanisms (this one and
-     * wp-cron's own pseudo-cron page-load check) on every WP page load is
-     * wasteful and harder to reason about than using WP's native scheduler.
+     * The plain-PHP/CLI half of auto health reporting - see
+     * initAutoHealthReport() for the WordPress half and the platform
+     * detection that picks between them. Only ever active when
+     * autoHealthReportViaTraffic is true, which initAutoHealthReport() sets
+     * exactly when auto_health_report is on AND the runtime is NOT
+     * WordPress. Piggybacks a health report onto whatever traffic/SDK usage
+     * the integrator's app already has, once autoHealthReportIntervalSeconds
+     * has elapsed since the last one - no cron job required. A local file
+     * (not a DB row) tracks the last-sent time, since this must work even
+     * for an integrator with no server access beyond PHP itself.
      */
     private function maybeAutoReportHealth(string $path): void
     {
-        if (!$this->config->autoHealthReport || $this->autoHealthReportInProgress) {
+        if (!$this->autoHealthReportViaTraffic || $this->autoHealthReportInProgress) {
             return;
         }
         if ($path === '/system/health-reports') {
