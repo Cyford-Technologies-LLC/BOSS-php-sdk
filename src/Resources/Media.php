@@ -79,30 +79,22 @@ final class Media extends AbstractResource
     }
 
     /**
-     * Upload a local file into the org's Media Manager library. Reads and
-     * base64-encodes $filePath itself - the v2 API has no multipart support,
-     * only JSON, so this is the SDK's equivalent of a browser file upload.
-     * Same size/extension/MIME validation server-side as the CRM's own
-     * upload path; throws ValidationException (422) on any violation.
+     * Upload a local file into the org's Media Manager library, as a real
+     * multipart request via Client::callMultipart() - the normal JSON call()
+     * path caps request bodies at 1MB server-side, nowhere near enough for a
+     * real video/audio file. Same size/extension/MIME validation server-side
+     * as the CRM's own browser upload path; throws ValidationException (422)
+     * on any violation.
      *
      * @throws \RuntimeException if $filePath can't be read
      */
     public function uploadFile(string $filePath, string $mediaType, ?int $folderId = null): array
     {
-        $contents = @file_get_contents($filePath);
-        if ($contents === false) {
-            throw new \RuntimeException("BOSS SDK: could not read file to upload: {$filePath}");
-        }
-
-        $body = [
-            'filename' => basename($filePath),
-            'media_type' => $mediaType,
-            'data_base64' => base64_encode($contents),
-        ];
+        $meta = ['filename' => basename($filePath), 'media_type' => $mediaType];
         if ($folderId !== null) {
-            $body['folder_id'] = $folderId;
+            $meta['folder_id'] = $folderId;
         }
 
-        return $this->client->call('POST', '/media/files', [], $body);
+        return $this->client->callMultipart('/media/upload', '/api/v2_media_upload.php', $meta, $filePath);
     }
 }

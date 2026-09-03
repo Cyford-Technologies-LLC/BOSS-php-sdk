@@ -3,6 +3,18 @@
 All notable changes to the BOSS PHP SDK. Format loosely follows Keep a Changelog.
 Compatibility matrix: SDK version → minimum BOSS API version.
 
+## [0.2.4] - 2026-09-03
+
+### Fixed
+- `Media::uploadFile()` (added in 0.2.3) sent the file as base64 inside a
+  normal JSON call() body - the server hard-caps every v2 JSON body at 1MB,
+  so this could only ever handle files under ~750KB, useless for the
+  video-upload use case it was built for. Replaced with
+  `Client::callMultipart()`, a real multipart/form-data POST to a dedicated
+  endpoint (`/api/v2_media_upload.php`) that lives outside the normal v2
+  route dispatch specifically because that dispatch refuses multipart
+  bodies outright. `uploadFile()`'s own signature is unchanged.
+
 ## [0.2.3] - 2026-09-03
 
 ### Added

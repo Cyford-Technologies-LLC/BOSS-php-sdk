@@ -45,7 +45,7 @@ use ZeroAI\Boss\Sdk\Resources\Webhooks;
 final class Client
 {
     /** Bump alongside the git tag/CHANGELOG entry on every release - sent as X-Client-Version on every request so BOSS can see which SDK version is actually in use (BOSS project 43 feature #113). */
-    public const VERSION = '0.2.3';
+    public const VERSION = '0.2.4';
 
     private Config $config;
 
@@ -312,6 +312,82 @@ final class Client
         } finally {
             $this->maybeAutoReportHealth($path);
         }
+    }
+
+    /**
+     * Escape hatch for a real multipart/form-data file upload - call() only
+     * speaks JSON, and the server refuses any v2 route body over 1MB (so a
+     * base64-encoded file could only ever be a few hundred KB). $scriptPath
+     * is relative to the site root, not /api/v2 - routes that accept a
+     * multipart body live outside the normal v2 route dispatch entirely
+     * (see the server-side script's own docblock for why).
+     *
+     * The signature covers $metaFields (JSON-encoded) rather than the file
+     * bytes: PHP does not expose the raw request body for a multipart
+     * request (no php://input), so there is nothing on the server side to
+     * hash the file against even if this method did. The file is protected
+     * by TLS in transit and validated server-side (extension/MIME/size),
+     * same trust model as any file upload over HTTPS.
+     *
+     * @param string $signedPath Logical path used only for the signature, e.g. "/media/upload"
+     * @param string $scriptPath Path of the actual endpoint, relative to the site root, e.g. "/api/v2_media_upload.php"
+     * @param array  $metaFields Signed, sent as a "meta" multipart field (JSON-encoded)
+     * @param string $filePath   Local file to attach as the "file" field
+     * @return array The decoded `data` portion of a successful response.
+     *
+     * @throws AuthException|RateLimitException|ValidationException|ApiException|SdkException
+     */
+    public function callMultipart(string $signedPath, string $scriptPath, array $metaFields, string $filePath): array
+    {
+        $fileContents = @file_get_contents($filePath);
+        if ($fileContents === false) {
+            throw new SdkException("BOSS SDK: could not read file to upload: {$filePath}");
+        }
+
+        $meta = (string)json_encode($metaFields, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        $headers = [
+            'X-Client-Name' => 'boss-php-sdk',
+            'X-Client-Version' => self::VERSION,
+        ];
+        if ($this->config->bearerToken !== null) {
+            $headers += RequestSigner::bearerHeaders($this->config->bearerToken);
+        } else {
+            $headers += RequestSigner::signedClientHeaders(
+                (string)$this->config->clientId,
+                (string)$this->config->clientSecret,
+                'POST',
+                $signedPath,
+                [],
+                $meta
+            );
+        }
+
+        $boundary = '----BossSdk' . bin2hex(random_bytes(16));
+        $headers['Content-Type'] = 'multipart/form-data; boundary=' . $boundary;
+
+        $filename = basename($filePath);
+        $mimeType = @mime_content_type($filePath) ?: 'application/octet-stream';
+
+        $body = "--{$boundary}\r\n"
+              . "Content-Disposition: form-data; name=\"meta\"\r\n\r\n"
+              . $meta . "\r\n"
+              . "--{$boundary}\r\n"
+              . "Content-Disposition: form-data; name=\"file\"; filename=\"" . addslashes($filename) . "\"\r\n"
+              . "Content-Type: {$mimeType}\r\n\r\n"
+              . $fileContents . "\r\n"
+              . "--{$boundary}--\r\n";
+
+        $url = $this->siteRootUrl() . $scriptPath;
+        $response = $this->config->httpClient->send('POST', $url, $headers, $body);
+        return $this->parseResponse($response);
+    }
+
+    /** baseUrl is always .../api/v2 (default or integrator-configured) - strip that suffix to get the site root a multipart endpoint (which lives outside /api/v2) is served from. */
+    private function siteRootUrl(): string
+    {
+        $base = $this->config->baseUrl;
+        return str_ends_with($base, '/api/v2') ? substr($base, 0, -strlen('/api/v2')) : $base;
     }
 
     /**
