@@ -45,4 +45,27 @@ final class Media extends AbstractResource
     {
         return $this->client->call('GET', '/media/video/generate-avatar/status', ['prediction_id' => $predictionId]);
     }
+
+    /**
+     * BOSS project 43 feature #134. Read-only list of the org's Media Manager
+     * library (images/video/audio/documents auto-stored from Replicate, TTS,
+     * uploads, etc - distinct from generateImage()/generateAvatar() above,
+     * which only create new files). Rows never include the server-local
+     * file_path, only public_url.
+     *
+     * @param array $query Optional: media_type (image|video|audio|document),
+     *   project_id (lists that project's files instead, ignoring limit),
+     *   search (shortname prefix match only, not filename), limit (default
+     *   200, max 500, ignored when project_id is set).
+     */
+    public function listFiles(array $query = []): array
+    {
+        return $this->client->call('GET', '/media/files', $query);
+    }
+
+    /** Get a single media library file by id, scoped to the caller's organization. */
+    public function getFile(int $id): array
+    {
+        return $this->client->call('GET', "/media/files/{$id}");
+    }
 }

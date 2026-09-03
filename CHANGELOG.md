@@ -3,6 +3,18 @@
 All notable changes to the BOSS PHP SDK. Format loosely follows Keep a Changelog.
 Compatibility matrix: SDK version → minimum BOSS API version.
 
+## [0.2.2] - 2026-09-02
+
+### Added
+- `Stripe` resource (`getConfig()`/`saveConfig()`) - lets an integrator
+  connect their Stripe account (mode, account id, publishable/secret keys,
+  webhook secret) directly through the SDK, without a CRM session login.
+  Secrets are vaulted server-side and never echoed back.
+- `Media::listFiles()`/`getFile()` - read-only access to the org's Media
+  Manager library (previously `Media` only covered generating new
+  images/avatars via Replicate). Never exposes the server-local file path,
+  only `public_url`.
+
 ## [Unreleased]
 
 ### Added

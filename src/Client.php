@@ -25,6 +25,7 @@ use ZeroAI\Boss\Sdk\Resources\Products;
 use ZeroAI\Boss\Sdk\Resources\Routing;
 use ZeroAI\Boss\Sdk\Resources\Sales;
 use ZeroAI\Boss\Sdk\Resources\Social;
+use ZeroAI\Boss\Sdk\Resources\Stripe;
 use ZeroAI\Boss\Sdk\Resources\Visitors;
 use ZeroAI\Boss\Sdk\Resources\Webhooks;
 
@@ -44,7 +45,7 @@ use ZeroAI\Boss\Sdk\Resources\Webhooks;
 final class Client
 {
     /** Bump alongside the git tag/CHANGELOG entry on every release - sent as X-Client-Version on every request so BOSS can see which SDK version is actually in use (BOSS project 43 feature #113). */
-    public const VERSION = '0.2.1';
+    public const VERSION = '0.2.2';
 
     private Config $config;
 
@@ -65,6 +66,7 @@ final class Client
     private Payments $payments;
     private Media $media;
     private Social $social;
+    private Stripe $stripe;
 
     /** Recursion guard - health()->report() itself calls call(), which must not re-trigger the auto-report piggyback check. */
     private bool $autoHealthReportInProgress = false;
@@ -98,6 +100,7 @@ final class Client
         $this->payments = new Payments($this);
         $this->media = new Media($this);
         $this->social = new Social($this);
+        $this->stripe = new Stripe($this);
 
         $this->initAutoHealthReport();
     }
@@ -279,6 +282,11 @@ final class Client
     public function social(): Social
     {
         return $this->social;
+    }
+
+    public function stripe(): Stripe
+    {
+        return $this->stripe;
     }
 
     public function logger(): LoggerInterface
