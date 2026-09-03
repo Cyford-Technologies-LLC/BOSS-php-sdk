@@ -3,6 +3,15 @@
 All notable changes to the BOSS PHP SDK. Format loosely follows Keep a Changelog.
 Compatibility matrix: SDK version → minimum BOSS API version.
 
+## [0.2.3] - 2026-09-03
+
+### Added
+- `Media::listFolders()` - folder tree with per-folder file counts, for
+  rendering a picker sidebar identical to the CRM's own media picker.
+- `Media::uploadFile()` - upload a local file into the org's Media Manager
+  library. Reads and base64-encodes the file itself (the v2 API has no
+  multipart support, only JSON).
+
 ## [0.2.2] - 2026-09-02
 
 ### Added
