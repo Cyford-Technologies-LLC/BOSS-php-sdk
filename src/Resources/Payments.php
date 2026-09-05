@@ -8,19 +8,22 @@ namespace ZeroAI\Boss\Sdk\Resources;
  * (provider-neutral, Stripe first) - saved payment methods, payment
  * intents, refunds.
  *
- * Disambiguation (BOSS project 43 feature #132, resolved 2026-08-31): two
- * genuinely independent payment-intent/refund implementations exist -
- * dynamic/financial.payments.* (bearer/session-only back-office reporting:
- * invoices, quotes, payouts, its own intent/refund calls) and this
- * `payments` integration (irc_app_or_rider_or_signed_or_token - supports a
- * signed-client credential, and is the one with proper payments.read/write
- * scopes). Unlike the leads/chat/accounts-identity pairs the scan also
- * flagged, this one is NOT layered or a false alarm - both really do create/
- * capture/cancel intents and refunds independently, which is a real drift
- * risk worth a platform-level look eventually. For THIS SDK, `payments`
- * (this file) is the correct one to wrap - dynamic/financial is an internal
- * admin/reporting surface, not meant for a customer-facing SDK to move
- * money through.
+ * Disambiguation (BOSS project 43 feature #132, 2026-08-31; updated
+ * 2026-09-05 post-BOSS #537): two independent payment-intent/refund
+ * implementations exist - dynamic/financial.payments.* and this `payments`
+ * integration (irc_app_or_rider_or_signed_or_token - supports a signed-
+ * client credential, proper payments.read/write scopes). For actually
+ * moving money (creating/capturing/cancelling a Stripe intent, refunds),
+ * `payments` (this file) remains the correct one to wrap here.
+ *
+ * dynamic/financial's invoices/quotes (see Financial.php in this same
+ * directory) are a SEPARATE concern - the generic ledger/bookkeeping
+ * record of a sale, not a money-movement call - and are very much meant
+ * for tenants to use from this SDK: it's how a tenant's own site/app plugs
+ * its sales into the platform's Accounting ledger. The original note here
+ * calling all of dynamic/financial "internal admin/reporting, not meant
+ * for a customer-facing SDK" predates BOSS #537 and was wrong for that
+ * half of the surface - corrected by wrapping it in Financial.php.
  *
  * Server-side only - NEVER expose payment-intent creation to a browser/JS
  * SDK directly.

@@ -3,6 +3,20 @@
 All notable changes to the BOSS PHP SDK. Format loosely follows Keep a Changelog.
 Compatibility matrix: SDK version → minimum BOSS API version.
 
+## [0.2.5] - 2026-09-05
+
+### Added
+- `Financial` resource - `createInvoice()`/`listInvoices()`/`getInvoice()`/
+  `updateInvoice()` (amount adjustment and status transitions; `status:
+  'paid'` posts the Accounting ledger + fires the Funnels event),
+  `createQuote()`/`listQuotes()`/`getQuote()`/`convertQuoteToInvoice()`
+  (idempotent, 409 if already converted), `listSales()`, `listPayouts()`.
+  This is the generic mechanism any tenant plugs their site/app's sales
+  flow into the platform's Accounting ledger with - not internal-only,
+  despite an earlier note on `Payments.php` (written before BOSS #537
+  existed) suggesting otherwise for all of `dynamic/financial`. Corrected
+  that docblock accordingly.
+
 ## [0.2.4] - 2026-09-03
 
 ### Fixed

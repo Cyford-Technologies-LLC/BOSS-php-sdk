@@ -16,6 +16,7 @@ use ZeroAI\Boss\Sdk\Resources\Communications;
 use ZeroAI\Boss\Sdk\Resources\Contacts;
 use ZeroAI\Boss\Sdk\Resources\Customers;
 use ZeroAI\Boss\Sdk\Resources\ErrorsResource;
+use ZeroAI\Boss\Sdk\Resources\Financial;
 use ZeroAI\Boss\Sdk\Resources\Funnels;
 use ZeroAI\Boss\Sdk\Resources\Health;
 use ZeroAI\Boss\Sdk\Resources\Leads;
@@ -45,7 +46,7 @@ use ZeroAI\Boss\Sdk\Resources\Webhooks;
 final class Client
 {
     /** Bump alongside the git tag/CHANGELOG entry on every release - sent as X-Client-Version on every request so BOSS can see which SDK version is actually in use (BOSS project 43 feature #113). */
-    public const VERSION = '0.2.4';
+    public const VERSION = '0.2.5';
 
     private Config $config;
 
@@ -59,6 +60,7 @@ final class Client
     private Booking $booking;
     private Products $products;
     private Sales $sales;
+    private Financial $financial;
     private Communications $communications;
     private Routing $routing;
     private Funnels $funnels;
@@ -93,6 +95,7 @@ final class Client
         $this->booking = new Booking($this);
         $this->products = new Products($this);
         $this->sales = new Sales($this);
+        $this->financial = new Financial($this);
         $this->communications = new Communications($this);
         $this->routing = new Routing($this);
         $this->funnels = new Funnels($this);
@@ -247,6 +250,11 @@ final class Client
     public function sales(): Sales
     {
         return $this->sales;
+    }
+
+    public function financial(): Financial
+    {
+        return $this->financial;
     }
 
     public function communications(): Communications

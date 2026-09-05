@@ -34,6 +34,7 @@ require __DIR__ . '/../src/Resources/Webhooks.php';
 require __DIR__ . '/../src/Resources/Booking.php';
 require __DIR__ . '/../src/Resources/Products.php';
 require __DIR__ . '/../src/Resources/Sales.php';
+require __DIR__ . '/../src/Resources/Financial.php';
 require __DIR__ . '/../src/Resources/Communications.php';
 require __DIR__ . '/../src/Resources/Routing.php';
 require __DIR__ . '/../src/Resources/Funnels.php';
@@ -197,6 +198,24 @@ $mock11->queue(200, ['success' => true, 'data' => ['sale' => ['id' => 1]]]);
 $bossSales = new Client(['bearer_token' => 'tok', 'http_client' => $mock11]);
 $bossSales->sales()->create(['title' => 'x']);
 check('Sales::create() posts to /crm/sales', str_ends_with($mock11->requests[0]['url'], '/crm/sales'));
+
+$mockFin1 = new MockHttpClient();
+$mockFin1->queue(200, ['success' => true, 'data' => ['invoice' => ['id' => 1]]]);
+$bossFin1 = new Client(['bearer_token' => 'tok', 'http_client' => $mockFin1]);
+$bossFin1->financial()->createInvoice(['company_id' => 1, 'total' => 10]);
+check('Financial::createInvoice() posts to /financial/invoices', str_ends_with($mockFin1->requests[0]['url'], '/financial/invoices'));
+
+$mockFin2 = new MockHttpClient();
+$mockFin2->queue(200, ['success' => true, 'data' => ['invoice' => ['id' => 1, 'status' => 'paid']]]);
+$bossFin2 = new Client(['bearer_token' => 'tok', 'http_client' => $mockFin2]);
+$bossFin2->financial()->updateInvoice(1, ['status' => 'paid']);
+check('Financial::updateInvoice() patches /financial/invoices/{id}', str_ends_with($mockFin2->requests[0]['url'], '/financial/invoices/1'));
+
+$mockFin3 = new MockHttpClient();
+$mockFin3->queue(200, ['success' => true, 'data' => ['invoice' => ['id' => 2]]]);
+$bossFin3 = new Client(['bearer_token' => 'tok', 'http_client' => $mockFin3]);
+$bossFin3->financial()->convertQuoteToInvoice(9);
+check('Financial::convertQuoteToInvoice() posts to /financial/quotes/{id}/convert', str_ends_with($mockFin3->requests[0]['url'], '/financial/quotes/9/convert'));
 
 $mock12 = new MockHttpClient();
 $mock12->queue(200, ['success' => true, 'data' => []]);
