@@ -3,6 +3,18 @@
 All notable changes to the BOSS PHP SDK. Format loosely follows Keep a Changelog.
 Compatibility matrix: SDK version → minimum BOSS API version.
 
+## [0.2.6] - 2026-09-05
+
+### Added
+- `Products::setChannel()` - `PUT /inventory/products/{id}/channels/{channel}`.
+  Per-platform product visibility (BOSS project 44): the same shared
+  inventory_products row can be pushed to multiple sales channels
+  (OpenCart, WooCommerce, Shopify, ...) while restricting specific
+  products to a subset of them. `Products::import()`'s per-record
+  `visible` bool (opencart/woocommerce schemas) sets this same thing at
+  import time; a product with no channel row is visible everywhere by
+  default, so this is purely additive/opt-out.
+
 ## [0.2.5] - 2026-09-05
 
 ### Added

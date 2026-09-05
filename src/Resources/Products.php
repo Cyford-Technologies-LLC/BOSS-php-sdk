@@ -37,6 +37,19 @@ final class Products extends AbstractResource
         return $this->client->call('POST', "/inventory/products/{$id}/stock", [], $data);
     }
 
+    /**
+     * Set (or create) one platform channel's visibility for a product without
+     * touching any other field - e.g. hide a product from OpenCart while
+     * leaving its WooCommerce visibility and every other field untouched.
+     * A product with no row for a channel is visible on it by default.
+     *
+     * @param array $data Optional: visible (bool), external_id (string).
+     */
+    public function setChannel(int $id, string $channel, array $data = []): array
+    {
+        return $this->client->call('PUT', "/inventory/products/{$id}/channels/{$channel}", [], $data);
+    }
+
     public function listCategories(array $query = []): array
     {
         return $this->client->call('GET', '/inventory/categories', $query);
@@ -54,9 +67,10 @@ final class Products extends AbstractResource
      *
      * @param string $schema 'opencart' (flat per-product record - sku/model, name,
      *   description, price, quantity, weight, weight_class_id, images, category_ids,
-     *   product_id, optional category_name), 'woocommerce' (a WooCommerce REST API v3
-     *   product object as-is, optional category_name override), or 'canonical' (BOSS's
-     *   own inventory_products shape, already mapped).
+     *   product_id, optional category_name, optional visible bool for this channel),
+     *   'woocommerce' (a WooCommerce REST API v3 product object as-is, optional
+     *   category_name override, optional visible bool), or 'canonical' (BOSS's own
+     *   inventory_products shape, already mapped - may include its own 'channels' array).
      * @param array $products Up to 500 records. A failure on one record doesn't abort the
      *   batch - it's collected in the response's `errors` array by index.
      */
